@@ -113,8 +113,11 @@ class KeyValueStore(object):
     
 
   def GetValue(self, key, max_age_in_sec=None):
-    outputText = self.cache.get(key, None)
-    return outputText
+    if key in self.cache:
+      outputText = self.cache.get(key)
+      return outputText
+    else:
+      return None
     """Gets a cached value or `None`.
 
     Values older than `max_age_in_sec` seconds are not returned.

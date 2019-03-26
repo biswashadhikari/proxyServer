@@ -28,7 +28,7 @@ SERVER_PORT = 7777
 LISTENING_PORT = 8888
 
 # Cache values retrieved from the server for this long.
-MAX_CACHE_AGE_SEC = 60.0  # 1 minute
+MAX_CACHE_AGE_SEC = 15.0  # 1 minute
 
 
 def ForwardCommandToServer(command, server_addr, server_port):
@@ -55,8 +55,9 @@ def ForwardCommandToServer(command, server_addr, server_port):
 
 
 def CheckCachedResponse(name, cache):
-  return cache.GetValue(name)
-  
+  if cache.GetValue(name) is not None:
+    return cache.GetValue(name)
+  return None
   # cmd, name, text = library.ParseCommand(command_line)
   
   # Update the cache for PUT commands but also pass the traffic to the server.
@@ -92,23 +93,32 @@ def ProxyClientCommand(sock, server_addr, server_port, cache):
       the server.
   """
   data = ''
-  firstAccessTime = 0
+  
   timeNow = 0
   command = sock.recv(1024)
   cmd, name, text = library.ParseCommand(command.decode())
+  timeNow=time.time()
+  firstAccessTime = time.time()
   if cmd == 'PUT':
     data = ForwardCommandToServer(command, server_addr, server_port)
+    cache.StoreValue(name, (firstAccessTime, data))
   elif cmd == 'GET':
-    timeNow=time.time()
     if CheckCachedResponse(name, cache) is None:
+      
       data = ForwardCommandToServer(command, server_addr, server_port)
-      cache.StoreValue(name, data)
-      firstAccessTime = time.time()
+      cache.StoreValue(name, (firstAccessTime, data))
+      
+      
     else:
-      if timeNow-firstAccessTime > 60:
-        data = CheckCachedResponse(name, cache)
+      timeAccessed=CheckCachedResponse(name, cache)
+      if timeAccessed[0] is not None:  
+        timeDiff= timeNow-timeAccessed[0]
+      if timeAccessed is None or timeDiff > MAX_CACHE_AGE_SEC:
+        data = ForwardCommandToServer(command, server_addr, server_port)
+        cache.StoreValue(name, (firstAccessTime, data))
+        
       else:    
-        data = CheckCachedResponse(name, cache)
+        data = CheckCachedResponse(name, cache)[1]
   elif cmd == 'DUMP':
     data = ForwardCommandToServer(command, server_addr, server_port)
   else:
