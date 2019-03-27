@@ -28,7 +28,7 @@ SERVER_PORT = 7777
 LISTENING_PORT = 8888
 
 # Cache values retrieved from the server for this long.
-MAX_CACHE_AGE_SEC = 15.0  # 1 minute
+MAX_CACHE_AGE_SEC = 60.0  # 1 minute
 
 
 def ForwardCommandToServer(command, server_addr, server_port):
